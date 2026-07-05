@@ -21,7 +21,7 @@ Python, FastAPI, psutil, SQLite, WebSockets, Chart.js, Docker, Telegram Bot API,
 ## Running it locally (Windows)
 
 ```powershell
-git clone https://github.com/thariq123/Seaker-Alert-App.git
+git clone https://github.com/Thariq5113/Seaker-Alert-App 
 cd Seaker-Alert-App
 
 python -m venv venv
@@ -39,7 +39,7 @@ Open http://localhost:8000
 ## Running it with Docker
 
 ```bash
-git clone https://github.com/thariq123/Seaker-Alert-App.git
+git clone https://github.com/Thariq5113/Seaker-Alert-App
 cd Seaker-Alert-App
 
 cp .env.example .env
