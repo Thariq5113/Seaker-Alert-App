@@ -96,7 +96,7 @@ Default thresholds used to trigger alerts:
 | CPU % | 85 |
 | RAM % | 85 |
 | Disk % | 90 |
-| Temperature °C | 75 |
+| Temperature °C | NA |
 
 To simulate an alert for a demo: just lower a threshold below the current value on the dashboard and save — the alert fires within a few seconds.
 
