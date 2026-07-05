@@ -1,0 +1,31 @@
+services:
+  seaker-alert-app:
+    build: .
+    image: seaker-alert-app:latest
+    container_name: seaker-alert-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - seaker_data:/app/data
+    restart: unless-stopped
+
+    # NOTE: this container monitors ITS OWN resource usage by default
+    # (i.e. Docker's), not the host machine's. To monitor the real host
+    # from inside Docker on Linux, uncomment the lines below so psutil
+    # reads the host's /proc instead of the container's:
+    #
+    # pid: host
+    # volumes:
+    #   - /proc:/host/proc:ro
+    #   - /sys:/host/sys:ro
+    #   - seaker_data:/app/data
+    #
+    # On Windows this distinction is less relevant for a quick local demo
+    # since Docker Desktop runs its own Linux VM anyway — for a true
+    # "Windows laptop metrics" demo, running the binary directly
+    # (see README "Run locally without Docker") is recommended.
+
+volumes:
+  seaker_data:

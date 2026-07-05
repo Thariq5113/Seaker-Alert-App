@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Seaker Alert App — System Monitor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" href="data:," />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#121b2e; --panel-2:#0f1830;
+    --text:#e8edf7; --muted:#8fa1c2; --accent:#4fd1c5;
+    --green:#3ecf8e; --yellow:#f5c451; --red:#ef5b5b; --border:#1f2c47;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+  header{display:flex;justify-content:space-between;align-items:center;padding:18px 28px;border-bottom:1px solid var(--border);}
+  header h1{font-size:18px;margin:0;font-weight:600;}
+  header .status{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);}
+  .dot.off{background:var(--red);box-shadow:0 0 8px var(--red);}
+  main{padding:24px 28px;max-width:1200px;margin:0 auto;}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;}
+  .card .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em;}
+  .card .value{font-size:28px;font-weight:700;margin-top:6px;}
+  .bar{height:8px;border-radius:4px;background:#1c2740;margin-top:12px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:4px;transition:width .4s ease, background .4s ease;}
+  .sub{color:var(--muted);font-size:12px;margin-top:6px;}
+  .gauge-card{display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .gauge-wrap{position:relative;width:150px;height:90px;margin-top:6px;}
+  .gauge-wrap canvas{position:absolute;top:0;left:0;}
+  .gauge-value{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:22px;font-weight:700;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .panel h2{margin:0 0 14px 0;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+  .range-btns button{background:var(--panel-2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;margin-right:6px;}
+  .range-btns button.active{color:var(--bg);background:var(--accent);border-color:var(--accent);}
+  .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+  .thresholds{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:12px;}
+  .thresholds label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .thresholds input{width:100%;background:var(--panel-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:14px;}
+  .btn{background:var(--accent);color:#062621;border:none;padding:9px 16px;border-radius:7px;font-weight:600;cursor:pointer;font-size:13px;}
+  .btn:hover{opacity:.9;}
+  .btn.secondary{background:var(--panel-2);color:var(--text);border:1px solid var(--border);}
+  #alertBanner{display:none;background:#3a1720;border:1px solid var(--red);color:#ffb4b4;padding:12px 16px;border-radius:10px;margin-bottom:18px;font-size:13px;}
+  #alertList{max-height:160px;overflow-y:auto;font-size:13px;color:var(--muted);}
+  #alertList div{padding:6px 0;border-bottom:1px solid var(--border);}
+  canvas{width:100% !important;}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:24px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛰 Seaker Alert App</h1>
+  <div class="status"><span class="dot" id="connDot"></span><span id="connText">Connecting…</span></div>
+</header>
+
+<main>
+  <div id="alertBanner"></div>
+
+  <div class="cards">
+    <div class="card gauge-card">
+      <div class="label">CPU Usage</div>
+      <div class="gauge-wrap">
+        <canvas id="cpuGauge" width="150" height="90"></canvas>
+        <div class="gauge-value" id="cpuVal">—</div>
+      </div>
+    </div>
+    <div class="card gauge-card">
+      <div class="label">RAM Usage</div>
+      <div class="gauge-wrap">
+        <canvas id="ramGauge" width="150" height="90"></canvas>
+        <div class="gauge-value" id="ramVal">—</div>
+      </div>
+      <div class="sub" id="ramSub">—</div>
+    </div>
+    <div class="card gauge-card">
+      <div class="label">Disk Usage</div>
+      <div class="gauge-wrap">
+        <canvas id="diskGauge" width="150" height="90"></canvas>
+        <div class="gauge-value" id="diskVal">—</div>
+      </div>
+      <div class="sub" id="diskSub">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Uptime</div>
+      <div class="value" id="uptimeVal">—</div>
+      <div class="sub">hours since boot</div>
+    </div>
+    <div class="card">
+      <div class="label">Temperature</div>
+      <div class="value" id="tempVal">—</div>
+      <div class="sub">°C (n/a on most Windows PCs)</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <h2>Historical Trend</h2>
+      <div class="range-btns">
+        <button data-h="1">1h</button>
+        <button data-h="24" class="active">24h</button>
+        <button data-h="168">7d</button>
+      </div>
+    </div>
+    <canvas id="historyChart" height="90"></canvas>
+    <div class="row" style="margin-top:14px;">
+      <div class="sub">Export current range:</div>
+      <div>
+        <button class="btn secondary" onclick="exportData('csv')">Export CSV</button>
+        <button class="btn secondary" onclick="exportData('json')">Export JSON</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Alert Thresholds</h2>
+    <div class="sub" style="margin-bottom:10px;">Viewing is open to anyone. Saving changes requires admin login (your browser will prompt for credentials).</div>
+    <div class="thresholds">
+      <div><label>CPU %</label><input id="th_cpu" type="number" step="0.1" /></div>
+      <div><label>RAM %</label><input id="th_ram" type="number" step="0.1" /></div>
+      <div><label>Disk %</label><input id="th_disk" type="number" step="0.1" /></div>
+      <div><label>Temperature °C</label><input id="th_temp" type="number" step="0.1" /></div>
+    </div>
+    <div style="margin-top:16px;"><button class="btn" onclick="saveThresholds()">Save Thresholds</button>
+    <span id="saveMsg" class="sub" style="margin-left:10px;"></span></div>
+  </div>
+
+  <div class="panel">
+    <h2>Recent Alerts</h2>
+    <div id="alertList">No alerts yet.</div>
+  </div>
+</main>
+
+<footer>Seaker Alert App · live via WebSocket · data persisted in SQLite</footer>
+
+<script>
+let ws;
+let historyChart;
+let currentRangeHours = 24;
+
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+function colorFor(pct){
+  if(pct >= 90) return getCss('--red');
+  if(pct >= 75) return getCss('--yellow');
+  return getCss('--green');
+}
+
+// --- Dial gauges (semicircle, like a speedometer) ---
+const gauges = {};
+
+function makeGauge(canvasId, initialValue){
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [initialValue, 100 - initialValue],
+        backgroundColor: [colorFor(initialValue), '#1c2740'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      responsive: false,
+      rotation: -90,
+      circumference: 180,
+      cutout: '72%',
+      animation: { duration: 400 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
+    }
+  });
+}
+
+function updateGauge(prefix, canvasId, pct, valueText){
+  if(!gauges[prefix]){
+    gauges[prefix] = makeGauge(canvasId, pct);
+  } else {
+    const g = gauges[prefix];
+    g.data.datasets[0].data = [pct, 100 - pct];
+    g.data.datasets[0].backgroundColor = [colorFor(pct), '#1c2740'];
+    g.update();
+  }
+  document.getElementById(prefix+'Val').textContent = valueText;
+}
+
+function updateMetrics(d){
+  updateGauge('cpu', 'cpuGauge', d.cpu_percent, d.cpu_percent.toFixed(1)+'%');
+  updateGauge('ram', 'ramGauge', d.ram_percent, d.ram_percent.toFixed(1)+'%');
+  document.getElementById('ramSub').textContent = `${d.ram_used_gb} / ${d.ram_total_gb} GB`;
+  updateGauge('disk', 'diskGauge', d.disk_percent, d.disk_percent.toFixed(1)+'%');
+  document.getElementById('diskSub').textContent = `${d.disk_used_gb} / ${d.disk_total_gb} GB`;
+  document.getElementById('uptimeVal').textContent = d.uptime_hours.toFixed(1)+' h';
+  document.getElementById('tempVal').textContent = d.temp_celsius !== null && d.temp_celsius !== undefined ? d.temp_celsius.toFixed(1)+'°C' : 'N/A';
+}
+
+function showAlerts(alertsArr){
+  const banner = document.getElementById('alertBanner');
+  banner.style.display = 'block';
+  banner.innerHTML = alertsArr.map(a => `⚠️ ${a.message}`).join('<br/>');
+  setTimeout(()=>{ banner.style.display='none'; }, 15000);
+  loadRecentAlerts();
+}
+
+function connectWS(){
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => { document.getElementById('connDot').classList.remove('off'); document.getElementById('connText').textContent = 'Live'; };
+  ws.onclose = () => { document.getElementById('connDot').classList.add('off'); document.getElementById('connText').textContent = 'Reconnecting…'; setTimeout(connectWS, 2000); };
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if(msg.type === 'metrics') updateMetrics(msg.data);
+    if(msg.type === 'alert') showAlerts(msg.alerts);
+  };
+}
+
+async function loadThresholds(){
+  const r = await fetch('/api/thresholds');
+  const t = await r.json();
+  document.getElementById('th_cpu').value = t.cpu_percent ?? '';
+  document.getElementById('th_ram').value = t.ram_percent ?? '';
+  document.getElementById('th_disk').value = t.disk_percent ?? '';
+  document.getElementById('th_temp').value = t.temp_celsius ?? '';
+}
+
+async function saveThresholds(){
+  const body = {
+    cpu_percent: parseFloat(document.getElementById('th_cpu').value),
+    ram_percent: parseFloat(document.getElementById('th_ram').value),
+    disk_percent: parseFloat(document.getElementById('th_disk').value),
+    temp_celsius: parseFloat(document.getElementById('th_temp').value),
+  };
+  const msg = document.getElementById('saveMsg');
+  try {
+    const res = await fetch('/api/thresholds', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    if(res.status === 401){
+      msg.textContent = 'Admin login required — a login popup should appear, or retry.';
+      msg.style.color = 'var(--yellow)';
+      // Re-trigger with a forced credential prompt by re-requesting the same URL;
+      // most browsers show their native Basic Auth dialog automatically on 401.
+      return;
+    }
+    if(!res.ok){
+      msg.textContent = 'Save failed.';
+      msg.style.color = 'var(--red)';
+      return;
+    }
+    msg.textContent = 'Saved ✓';
+    msg.style.color = 'var(--green)';
+  } catch(e){
+    msg.textContent = 'Network error.';
+    msg.style.color = 'var(--red)';
+  }
+  setTimeout(()=> msg.textContent='', 3000);
+}
+
+async function loadRecentAlerts(){
+  const r = await fetch('/api/alerts?limit=15');
+  const rows = await r.json();
+  const el = document.getElementById('alertList');
+  if(!rows.length){ el.textContent = 'No alerts yet.'; return; }
+  el.innerHTML = rows.map(a => `<div>${new Date(a.ts*1000).toLocaleString()} — ${a.message}</div>`).join('');
+}
+
+async function loadHistory(hours){
+  currentRangeHours = hours;
+  const r = await fetch(`/api/metrics/history?hours=${hours}`);
+  const rows = await r.json();
+  const labels = rows.map(r => new Date(r.ts*1000).toLocaleTimeString());
+  const cpu = rows.map(r => r.cpu_percent);
+  const ram = rows.map(r => r.ram_percent);
+  const disk = rows.map(r => r.disk_percent);
+
+  if(historyChart){
+    historyChart.data.labels = labels;
+    historyChart.data.datasets[0].data = cpu;
+    historyChart.data.datasets[1].data = ram;
+    historyChart.data.datasets[2].data = disk;
+    historyChart.update();
+    return;
+  }
+
+  const ctx = document.getElementById('historyChart').getContext('2d');
+  historyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {label:'CPU %', data:cpu, borderColor:'#4fd1c5', tension:0.3, pointRadius:0},
+        {label:'RAM %', data:ram, borderColor:'#f5c451', tension:0.3, pointRadius:0},
+        {label:'Disk %', data:disk, borderColor:'#ef5b5b', tension:0.3, pointRadius:0},
+      ]
+    },
+    options: {
+      responsive:true,
+      interaction:{mode:'index', intersect:false},
+      scales:{
+        x:{ticks:{color:'#8fa1c2', maxTicksLimit:8}, grid:{color:'#1f2c47'}},
+        y:{min:0, max:100, ticks:{color:'#8fa1c2'}, grid:{color:'#1f2c47'}}
+      },
+      plugins:{legend:{labels:{color:'#e8edf7'}}}
+    }
+  });
+}
+
+function exportData(fmt){
+  window.open(`/api/export/${fmt}?hours=${currentRangeHours}`, '_blank');
+}
+
+document.querySelectorAll('.range-btns button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.range-btns button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    loadHistory(parseFloat(btn.dataset.h));
+  });
+});
+
+// init
+connectWS();
+loadThresholds();
+loadRecentAlerts();
+loadHistory(24);
+setInterval(loadHistory, 30000, currentRangeHours); // refresh chart every 30s
+setInterval(loadRecentAlerts, 30000);
+</script>
+</body>
+</html>
