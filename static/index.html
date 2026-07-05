@@ -104,7 +104,9 @@
         <button data-h="168">7d</button>
       </div>
     </div>
-    <canvas id="historyChart" height="90"></canvas>
+    <div style="position:relative; height:380px; width:100%;">
+      <canvas id="historyChart"></canvas>
+    </div>
     <div class="row" style="margin-top:14px;">
       <div class="sub">Export current range:</div>
       <div>
@@ -287,16 +289,17 @@ async function loadHistory(hours){
     data: {
       labels,
       datasets: [
-        {label:'CPU %', data:cpu, borderColor:'#4fd1c5', tension:0.3, pointRadius:0},
-        {label:'RAM %', data:ram, borderColor:'#f5c451', tension:0.3, pointRadius:0},
-        {label:'Disk %', data:disk, borderColor:'#ef5b5b', tension:0.3, pointRadius:0},
+        {label:'CPU %', data:cpu, borderColor:'#4fd1c5', backgroundColor:'rgba(79,209,197,0.15)', fill:true, tension:0.3, pointRadius:0, borderWidth:2},
+        {label:'RAM %', data:ram, borderColor:'#f5c451', backgroundColor:'rgba(245,196,81,0.08)', fill:true, tension:0.3, pointRadius:0, borderWidth:2},
+        {label:'Disk %', data:disk, borderColor:'#ef5b5b', backgroundColor:'rgba(239,91,91,0.08)', fill:true, tension:0.3, pointRadius:0, borderWidth:2},
       ]
     },
     options: {
       responsive:true,
+      maintainAspectRatio:false,
       interaction:{mode:'index', intersect:false},
       scales:{
-        x:{ticks:{color:'#8fa1c2', maxTicksLimit:8}, grid:{color:'#1f2c47'}},
+        x:{ticks:{color:'#8fa1c2', maxTicksLimit:10}, grid:{color:'#1f2c47'}},
         y:{min:0, max:100, ticks:{color:'#8fa1c2'}, grid:{color:'#1f2c47'}}
       },
       plugins:{legend:{labels:{color:'#e8edf7'}}}
