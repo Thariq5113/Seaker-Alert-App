@@ -52,7 +52,7 @@ Or just pull the image I've already built and pushed to Docker Hub:
 docker pull thariq7/seaker-alert-app:latest
 docker run -p 8000:8000 --env-file .env thariq7/seaker-alert-app:latest
 ```
-Docker Hub: https://hub.docker.com/r/thariq7/seaker-alert-app
+Docker Hub containing the image: https://hub.docker.com/r/thariq7/seaker-alert-app
 
 Either way, open http://localhost:8000. Note: inside the container, the app reports the container's own resource usage, not the host machine's — this is expected Docker behaviour, not a bug.
 
