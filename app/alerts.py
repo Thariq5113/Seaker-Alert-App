@@ -3,6 +3,7 @@ Alert dispatch: Telegram + email, with a per-metric cooldown so a metric
 stuck above threshold doesn't spam the channel every collection cycle.
 """
 import time
+import threading
 import smtplib
 from email.mime.text import MIMEText
 import requests
@@ -20,17 +21,49 @@ def _mark_alerted(metric: str):
     _last_alert_time[metric] = time.time()
 
 
-def send_telegram(message: str):
-    if not (config.TELEGRAM_ENABLED and config.TELEGRAM_BOT_TOKEN and config.TELEGRAM_CHAT_ID):
+def reset_cooldown(metrics):
+    """
+    Clears the cooldown timer for the given metric names, so the next
+    evaluation can alert immediately even if that metric alerted recently.
+    Used when the user manually saves new thresholds from the dashboard —
+    if the new threshold is already breached, they should see/get the
+    alert right away, not have it silently swallowed by the cooldown.
+    """
+    for metric in metrics:
+        _last_alert_time.pop(metric, None)
+
+
+def _send_telegram_blocking(message: str):
+    if not (config.TELEGRAM_ENABLED and config.TELEGRAM_BOT_TOKEN):
         return
     url = f"https://api.telegram.org/bot{config.TELEGRAM_BOT_TOKEN}/sendMessage"
-    try:
-        requests.post(url, data={"chat_id": config.TELEGRAM_CHAT_ID, "text": message}, timeout=5)
-    except requests.RequestException as e:
-        print(f"[alerts] Telegram send failed: {e}")
+
+    # Broadcast to everyone who has ever messaged the bot (auto-discovered
+    # via telegram_poller.py), plus any manually configured chat IDs in
+    # .env (comma-separated), so both approaches work together.
+    chat_ids = set(database.get_telegram_subscribers())
+    if config.TELEGRAM_CHAT_ID:
+        chat_ids.update(c.strip() for c in config.TELEGRAM_CHAT_ID.split(",") if c.strip())
+
+    for chat_id in chat_ids:
+        try:
+            requests.post(url, data={"chat_id": chat_id, "text": message}, timeout=5)
+        except requests.RequestException as e:
+            print(f"[alerts] Telegram send failed for chat_id {chat_id}: {e}")
 
 
-def send_email(subject: str, body: str):
+def send_telegram(message: str):
+    """
+    Fire-and-forget: runs the actual network calls on a background thread
+    so alert dispatch never blocks the main metrics collection / dashboard
+    broadcast loop. Without this, sending to N Telegram subscribers would
+    pause live dashboard updates for however long those N network calls
+    took to complete.
+    """
+    threading.Thread(target=_send_telegram_blocking, args=(message,), daemon=True).start()
+
+
+def _send_email_blocking(subject: str, body: str):
     if not (config.EMAIL_ENABLED and config.SMTP_USER and config.SMTP_PASSWORD and config.ALERT_EMAIL_TO):
         return
     try:
@@ -44,6 +77,11 @@ def send_email(subject: str, body: str):
             server.send_message(msg)
     except Exception as e:
         print(f"[alerts] Email send failed: {e}")
+
+
+def send_email(subject: str, body: str):
+    """Fire-and-forget, same reasoning as send_telegram above — SMTP is slow."""
+    threading.Thread(target=_send_email_blocking, args=(subject, body), daemon=True).start()
 
 
 METRIC_LABELS = {

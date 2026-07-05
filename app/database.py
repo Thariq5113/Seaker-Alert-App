@@ -65,6 +65,25 @@ def init_db():
             )
         """)
 
+        # Anyone who has messaged the Telegram bot gets registered here,
+        # so alerts can be broadcast to everyone who's started the bot,
+        # not just a fixed chat_id from .env.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS telegram_subscribers (
+                chat_id TEXT PRIMARY KEY,
+                first_seen REAL NOT NULL
+            )
+        """)
+
+        # Tracks the last processed Telegram update_id, so polling doesn't
+        # re-read the same messages every cycle.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS telegram_state (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+
         # seed default thresholds if empty
         existing = conn.execute("SELECT COUNT(*) c FROM thresholds").fetchone()["c"]
         if existing == 0:
@@ -132,3 +151,31 @@ def prune_old(days: int = 30):
     cutoff = time.time() - days * 86400
     with get_conn() as conn:
         conn.execute("DELETE FROM metrics WHERE ts < ?", (cutoff,))
+
+
+def add_telegram_subscriber(chat_id: str):
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT INTO telegram_subscribers (chat_id, first_seen) VALUES (?, ?)
+            ON CONFLICT(chat_id) DO NOTHING
+        """, (str(chat_id), time.time()))
+
+
+def get_telegram_subscribers():
+    with get_conn() as conn:
+        rows = conn.execute("SELECT chat_id FROM telegram_subscribers").fetchall()
+        return [r["chat_id"] for r in rows]
+
+
+def get_telegram_offset():
+    with get_conn() as conn:
+        row = conn.execute("SELECT value FROM telegram_state WHERE key = 'offset'").fetchone()
+        return int(row["value"]) if row else 0
+
+
+def set_telegram_offset(offset: int):
+    with get_conn() as conn:
+        conn.execute("""
+            INSERT INTO telegram_state (key, value) VALUES ('offset', ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value
+        """, (str(offset),))

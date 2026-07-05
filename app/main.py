@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, database, collector, alerts, mqtt_client, auth
+from . import config, database, collector, alerts, mqtt_client, auth, telegram_poller
 
 connected_clients: set[WebSocket] = set()
 latest_sample: dict = {}
@@ -61,12 +61,23 @@ async def collection_loop():
         await asyncio.sleep(config.BROADCAST_INTERVAL_SECONDS)
 
 
+async def telegram_poll_loop():
+    while True:
+        try:
+            telegram_poller.poll_once()
+        except Exception as e:
+            print(f"[telegram_poll_loop] error: {e}")
+        await asyncio.sleep(10)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database.init_db()
     task = asyncio.create_task(collection_loop())
+    poll_task = asyncio.create_task(telegram_poll_loop())
     yield
     task.cancel()
+    poll_task.cancel()
 
 
 app = FastAPI(title="Seaker Alert App", lifespan=lifespan)
@@ -95,15 +106,31 @@ class ThresholdsUpdate(BaseModel):
 
 
 @app.post("/api/thresholds")
-def api_set_thresholds(update: ThresholdsUpdate, admin_user: str = Depends(auth.require_admin)):
+async def api_set_thresholds(update: ThresholdsUpdate, admin_user: str = Depends(auth.require_admin)):
     values = {k: v for k, v in update.model_dump().items() if v is not None}
     database.set_thresholds(values)
-    return database.get_thresholds()
+    new_thresholds = database.get_thresholds()
+
+    # Check the current live sample against the freshly-saved thresholds
+    # right now, rather than waiting for the next collection cycle — and
+    # bypass the cooldown for the metrics that were just changed, so a
+    # threshold that's already breached alerts immediately (useful for
+    # demos: lower a threshold, save, see/get the alert right away).
+    if latest_sample:
+        alerts.reset_cooldown(values.keys())
+        alerts.evaluate_and_dispatch(latest_sample, new_thresholds, broadcast_fn=sync_broadcast)
+
+    return new_thresholds
 
 
 @app.get("/api/alerts")
 def api_alerts(limit: int = 20):
     return database.get_recent_alerts(limit=limit)
+
+
+@app.get("/api/telegram/subscribers")
+def api_telegram_subscribers():
+    return {"subscribers": database.get_telegram_subscribers()}
 
 
 @app.get("/api/export/csv")
