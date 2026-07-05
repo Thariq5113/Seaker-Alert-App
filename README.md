@@ -21,7 +21,7 @@ Python, FastAPI, psutil, SQLite, WebSockets, Chart.js, Docker, Telegram Bot API,
 ## Running it locally (Windows)
 
 ```powershell
-git clone https://github.com/thariq123/Seaker-Alert-App.git
+git clone https://github.com/Thariq5113/Seaker-Alert-App 
 cd Seaker-Alert-App
 
 python -m venv venv
@@ -39,7 +39,7 @@ Open http://localhost:8000
 ## Running it with Docker
 
 ```bash
-git clone https://github.com/thariq123/Seaker-Alert-App.git
+git clone https://github.com/Thariq5113/Seaker-Alert-App
 cd Seaker-Alert-App
 
 cp .env.example .env
@@ -86,7 +86,7 @@ Restart the app after changing `.env` for any of these to take effect.
 Edit them directly from the dashboard under "Alert Thresholds." Saving requires an admin login — your browser will prompt for it. Set the admin username/password in `.env`:
 ```
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=<pick a real password>
+ADMIN_PASSWORD=admin
 ```
 
 Default thresholds used to trigger alerts:
@@ -96,13 +96,9 @@ Default thresholds used to trigger alerts:
 | CPU % | 85 |
 | RAM % | 85 |
 | Disk % | 90 |
-| Temperature °C | 75 |
+| Temperature °C | NA |
 
 To simulate an alert for a demo: just lower a threshold below the current value on the dashboard and save — the alert fires within a few seconds.
-
-## Live demo
-
-Dashboard: `<add your ngrok / deployed URL here before submitting>`
 
 ## Notes
 
