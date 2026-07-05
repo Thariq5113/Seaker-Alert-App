@@ -86,7 +86,7 @@ Restart the app after changing `.env` for any of these to take effect.
 Edit them directly from the dashboard under "Alert Thresholds." Saving requires an admin login — your browser will prompt for it. Set the admin username/password in `.env`:
 ```
 ADMIN_USERNAME=admin
-ADMIN_PASSWORD=<pick a real password>
+ADMIN_PASSWORD=admin
 ```
 
 Default thresholds used to trigger alerts:
@@ -99,10 +99,6 @@ Default thresholds used to trigger alerts:
 | Temperature °C | NA |
 
 To simulate an alert for a demo: just lower a threshold below the current value on the dashboard and save — the alert fires within a few seconds.
-
-## Live demo
-
-Dashboard: `<add your ngrok / deployed URL here before submitting>`
 
 ## Notes
 
