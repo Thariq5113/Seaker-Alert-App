@@ -112,7 +112,7 @@ To simulate an alert for a demo: just lower a threshold below the current value 
 
 ## Live demo
 
-Dashboard: `<add your remote link here before submitting>`
+Dashboard: https://seaker-alert-app-t5pm.onrender.com
 
 ## A few things I focused on while building this
 
