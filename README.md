@@ -13,7 +13,7 @@ A system monitoring and alerting app built for the Seaker Jr. IoT Engineer assig
 - MQTT support for pushing metrics to other devices
 - Basic role-based access: anyone can view, only an admin login can change thresholds (ADMIN_USERNAME=admin,ADMIN_PASSWORD=admin)
 - Dockerized, and also available as a prebuilt image on Docker Hub
-- Remote server using render URL- https://seaker-alert-app-t5pm.onrender.com
+- Remote server using render URL- https://seaker-alert-app-1.onrender.com
 
 ## Tech stack
 
@@ -112,7 +112,7 @@ To simulate an alert for a demo: just lower a threshold below the current value 
 
 ## Live demo
 
-Dashboard: https://seaker-alert-app-t5pm.onrender.com
+Dashboard: https://seaker-alert-app-1.onrender.com
 
 ## A few things I focused on while building this
 
