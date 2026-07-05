@@ -12,7 +12,7 @@ A system monitoring and alerting app built for the Seaker Jr. IoT Engineer assig
 - CSV/JSON export of historical data
 - MQTT support for pushing metrics to other devices
 - Basic role-based access: anyone can view, only an admin login can change thresholds
-- Dockerized
+- Dockerized, and also available as a prebuilt image on Docker Hub
 
 ## Tech stack
 
@@ -38,6 +38,7 @@ Open http://localhost:8000
 
 ## Running it with Docker
 
+Build it yourself:
 ```bash
 git clone https://github.com/Thariq5113/Seaker-Alert-App
 cd Seaker-Alert-App
@@ -46,15 +47,23 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Same URL, http://localhost:8000. Note: inside the container, the app reports the container's own resource usage, not the host machine's — this is expected Docker behaviour, not a bug.
+Or just pull the image I've already built and pushed to Docker Hub:
+```bash
+docker pull thariq7/seaker-alert-app:latest
+docker run -p 8000:8000 --env-file .env thariq7/seaker-alert-app:latest
+```
+Docker Hub: https://hub.docker.com/r/thariq7/seaker-alert-app
+
+Either way, open http://localhost:8000. Note: inside the container, the app reports the container's own resource usage, not the host machine's — this is expected Docker behaviour, not a bug.
 
 ## Setting up alerts
 
 **Telegram** (easiest to demo):
-1. Message `@BotFather` on Telegram → `/newbot` → copy the token it gives you
-2. Message your new bot once (so it's allowed to reply to you)
-3. Visit `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy the `chat id` you see
-4. In `.env`:
+1. I've already set up a bot for this project — you can message it directly at https://t.me/SeakerAlertBot
+2. If you want to use your own bot instead: message `@BotFather` on Telegram → `/newbot` → copy the token it gives you
+3. Message your bot once (so it's allowed to reply to you)
+4. Visit `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy the `chat id` you see
+5. In `.env`:
    ```
    TELEGRAM_ENABLED=true
    TELEGRAM_BOT_TOKEN=<token>
@@ -100,8 +109,17 @@ Default thresholds used to trigger alerts:
 
 To simulate an alert for a demo: just lower a threshold below the current value on the dashboard and save — the alert fires within a few seconds.
 
-## Notes
+## Live demo
 
-I used a custom FastAPI + SQLite setup instead of the TICK stack, so I could build the full pipeline myself (collection, storage, alerting, real-time dashboard) rather than just wiring together existing tools. Happy to walk through how it'd map onto TICK stack if useful.
+Dashboard: `<add your remote link here before submitting>`
 
-Temperature shows N/A on Windows since Windows doesn't expose it through a standard API the way Linux does — this is why the brief marks it optional.
+## A few things I focused on while building this
+
+I didn't want this to just be psutil numbers dumped on a page, so I spent extra time on a few things:
+
+- **The dashboard updates in real time over a WebSocket**, not by refreshing the page every few seconds. Open it and watch the gauges move as your CPU load changes.
+- **Alerts actually go out on three channels** — Telegram, email, and an on-screen banner — and I added a cooldown so the same alert doesn't spam you every few seconds while a metric stays high.
+- **Thresholds are editable from the dashboard itself**, no need to touch config files, but I locked that down behind a login so it's not just wide open to anyone with the link.
+- I went with a plain **FastAPI + SQLite** setup instead of the TICK stack option mentioned in the brief. I wanted to actually build the collection, storage, and alerting logic myself rather than just configuring existing tools together — felt like a better way to show what I can build, not just what I can wire up.
+- Temperature shows **N/A on Windows** — that's not a bug, Windows just doesn't expose it through psutil the way Linux does, which is also why the brief lists it as optional.
+- The image and history charts, gauges, and layout are all custom, no templates — I wanted the dashboard to actually look like something someone would want to check, not just raw numbers in a table.
